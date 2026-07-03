@@ -5,7 +5,7 @@ import numpy as np
 import customtkinter as ctk
 from tkinter import filedialog
 import soundfile as sf
-from scipy.signal import fftconvolve
+from scipy.signal import fftconvolve, resample
 import sounddevice as sd
 
 ctk.set_appearance_mode('Dark')
@@ -46,7 +46,7 @@ class ReverbAula(ctk.CTk):
 
         self.lbl_decay = ctk.CTkLabel(self.frame_parametros, text = 'Escalado de decay: 1.0')
         self.lbl_decay.pack(anchor = 'w', padx = 15, pady = (10, 0))
-        self.slider_decay = ctk.CTkSlider(self.frame_parametros, from_ = 0.1, to = 3.0, number_of_steps = 29, command = self.actualizar_lbl_decay)
+        self.slider_decay = ctk.CTkSlider(self.frame_parametros, from_ = 0.1, to = 5.0, number_of_steps = 58, command = self.actualizar_lbl_decay)
         self.slider_decay.set(1.0)
         self.slider_decay.pack(fill = 'x', padx = 15, pady = (0, 10))
 
@@ -125,15 +125,46 @@ class ReverbAula(ctk.CTk):
         threading.Thread(target = self.procesar_audio, daemon = True).start()
 
     def procesar_audio(self):
-        ir = self.audio_ir if self.audio_ir is not None else self.generar_ir_error()
-
         dry = self.audio_dry
 
+        ir = self.audio_ir if self.audio_ir is not None else self.generar_ir_error()
         factor_decay = self.slider_decay.get()
-        t = np.arange(len(ir)) / self.fs
 
-        envolvente = np.exp(- (5.0 / factor_decay) * t).reshape(-1, 1)
-        ir_modificada = ir * envolvente
+        duracion_real = len(ir) / self.fs_ir
+        decay_seg = duracion_real * factor_decay
+
+        t = np.arange(len(ir)) / self.fs_ir
+
+        if factor_decay <= 1:
+            if factor_decay == 1:
+                ir_modificada = ir.copy()
+            else:
+                envolvente = np.exp(- (5.0 / decay_seg) * t).reshape(-1, 1)
+                ir_modificada = ir * envolvente
+        else:
+            muestras_ataque = int(0.060 * self.fs_ir)
+            
+            ataque = ir[:muestras_ataque].copy()
+            cola = ir[muestras_ataque:].copy()
+            
+            muestras_cola = len(cola)
+            muestras_cola_nuevas = int(muestras_cola * factor_decay)
+            
+            ind = np.linspace(0, muestras_cola - 1, muestras_cola)
+            ind_nuevos = np.linspace(0, muestras_cola - 1, muestras_cola_nuevas)
+            
+            n_canales_ir = ir.shape[1]
+            cola_estirada = np.zeros((muestras_cola_nuevas, n_canales_ir))
+            
+            for canal in range(n_canales_ir):
+                cola_estirada[:, canal] = np.interp(ind_nuevos, ind, cola[:, canal])
+            
+            muestras_fade = int(0.040 * self.fs_ir)
+            if muestras_fade < muestras_cola_nuevas:
+                rampa_subida = np.linspace(0.0, 1.0, muestras_fade).reshape(-1, 1)
+                cola_estirada[:muestras_fade] *= rampa_subida
+            
+            ir_modificada = np.vstack([ataque, cola_estirada])
 
         canales_wet = []
         n_canales = min(dry.shape[1], ir_modificada.shape[1])
