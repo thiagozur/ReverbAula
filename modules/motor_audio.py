@@ -85,7 +85,6 @@ def preparar_ir(self, preset = None, make_wides = None):
                 ruta_salida = destino / nombre
 
                 if ruta_salida.exists():
-                    print(f'Esta IR ya existe (omitiendo {nombre})')
                     continue
 
                 try:

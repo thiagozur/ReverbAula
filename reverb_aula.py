@@ -22,7 +22,7 @@ class ReverbAula(ctk.CTk):
         self.title('Reverb en base IR del aula')
 
         ancho = 1000
-        alto = 850
+        alto = 880
         ancho_pantalla = self.winfo_screenwidth()
         alto_pantalla = self.winfo_screenheight()
 
@@ -30,6 +30,7 @@ class ReverbAula(ctk.CTk):
         y = int((alto_pantalla / 2) - (alto / 2))
 
         self.geometry(f'{ancho}x{alto}+{x}+{y}')
+        self.resizable(False, False)
 
         self.audio_path = None
         self.ir_path = None
@@ -118,7 +119,7 @@ class ReverbAula(ctk.CTk):
         self.btn_prev_preset = ctk.CTkButton(self.frame_preset, text = '◀', width = 40, command = self.preset_anterior)
         self.btn_prev_preset.grid(row = 0, column = 0, padx = 10, pady = 10)
 
-        self.lbl_nombre_preset = ctk.CTkLabel(self.frame_preset, text = 'Buscando IRs...', font = ctk.CTkFont(size = 15, weight = 'bold'), cursor = 'hand2')
+        self.lbl_nombre_preset = ctk.CTkLabel(self.frame_preset, text = 'Buscando IRs...', font = ctk.CTkFont(size = 18, weight = 'bold'), cursor = 'hand2')
         self.lbl_nombre_preset.grid(row = 0, column = 1, padx = 10, pady = 10, sticky = 'ew')
         self.lbl_nombre_preset.bind("<Button-1>", self.mostrar_menu_desplegable)
 
@@ -128,9 +129,9 @@ class ReverbAula(ctk.CTk):
         self.frame_archivo = ctk.CTkFrame(self)
         self.frame_archivo.pack(pady = 15, padx = 20, fill = 'x')
 
-        self.btn_cargar_audio = ctk.CTkButton(self.frame_archivo, text = 'Cargar archivo de audio', command = self.cargar_audio)
+        self.btn_cargar_audio = ctk.CTkButton(self.frame_archivo, text = 'Cargar archivo de audio', font = ctk.CTkFont(size = 14), command = self.cargar_audio)
         self.btn_cargar_audio.grid(row = 0, column = 0, padx = 10, pady = 10)
-        self.lbl_estado_audio = ctk.CTkLabel(self.frame_archivo, text = 'No hay ningún archivo cargado')
+        self.lbl_estado_audio = ctk.CTkLabel(self.frame_archivo, text = 'No hay ningún archivo cargado', font = ctk.CTkFont(size = 14))
         self.lbl_estado_audio.grid(row = 0, column = 1, padx = 10, pady = 10)
 
         self.frame_visualizador = ctk.CTkFrame(self, width = 550, height = 350, fg_color = '#1a1a1a', corner_radius = 10)
@@ -150,9 +151,10 @@ class ReverbAula(ctk.CTk):
 
         self.ax.tick_params(colors = '#888888', labelsize = 9)
         self.ax.grid(True, color = '#333333', linestyle = '--', linewidth = 0.5)
-        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 10, pad = 10)
+        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 12, pad = 10)
         self.ax.set_xlabel('Tiempo (s)', color = '#888888', fontsize = 9)
         self.ax.set_ylabel('Amplitud', color = '#888888', fontsize = 9)
+        self.ax.set_xlim(0, 3)
 
         for spine in self.ax.spines.values():
             spine.set_color('#333333')
@@ -171,7 +173,7 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_decay = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_decay.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_decay = ctk.CTkLabel(self.contenedor_decay, text = 'Decay\n1.0x', font = ctk.CTkFont(size = 11, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_decay = ctk.CTkLabel(self.contenedor_decay, text = 'Decay\n1.0x', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_decay.pack(pady = (0, 2))
         self.knob_decay = CTkKnob(self.contenedor_decay, from_ = 0.1, to = 5.0, step = 0.1, size = 70, command = self.actualizar_decay)
         self.knob_decay.pack(pady = 5)
@@ -179,7 +181,7 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_predelay = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_predelay.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_predelay = ctk.CTkLabel(self.contenedor_predelay, text = 'Pre-delay\n0 ms', font = ctk.CTkFont(size = 11, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_predelay = ctk.CTkLabel(self.contenedor_predelay, text = 'Pre-delay\n0 ms', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_predelay.pack(pady = (0, 2))
         self.knob_predelay = CTkKnob(self.contenedor_predelay, from_ = 0, to = 150, step = 1, size = 70, command = self.actualizar_predelay)
         self.knob_predelay.pack(pady = 5)
@@ -187,7 +189,7 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_hpf = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_hpf.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_hpf = ctk.CTkLabel(self.contenedor_hpf, text = 'Filtro High-Pass\n20 Hz', font = ctk.CTkFont(size = 11, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_hpf = ctk.CTkLabel(self.contenedor_hpf, text = 'Filtro High-Pass\n20 Hz', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_hpf.pack(pady = (0, 2))
         self.knob_hpf = CTkKnob(self.contenedor_hpf, from_ = 20, to = 500, step = 1, size = 70, command = self.actualizar_filtros)
         self.knob_hpf.pack(pady = 5)
@@ -195,7 +197,7 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_lpf = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_lpf.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_lpf = ctk.CTkLabel(self.contenedor_lpf, text = 'Filtro Low-Pass\n20 kHz', font = ctk.CTkFont(size = 11, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_lpf = ctk.CTkLabel(self.contenedor_lpf, text = 'Filtro Low-Pass\n20 kHz', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_lpf.pack(pady = (0, 2))
         self.knob_lpf = CTkKnob(self.contenedor_lpf, from_ = 1000, to = 20000, step = 1, size = 70, command = self.actualizar_filtros)
         self.knob_lpf.pack(pady = 5)
@@ -203,27 +205,33 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_mix = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_mix.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_mix = ctk.CTkLabel(self.contenedor_mix, text = 'Mix\n40%', font = ctk.CTkFont(size = 11, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_mix = ctk.CTkLabel(self.contenedor_mix, text = 'Mix\n40%', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_mix.pack(pady = (0, 2))
         self.knob_mix = CTkKnob(self.contenedor_mix, from_ = 0.0, to = 1.0, step = 0.01, size = 70, command = self.actualizar_mix)
         self.knob_mix.pack(pady = 5)
         self.knob_mix.set(0.4)
 
         self.frame_playback = ctk.CTkFrame(self, fg_color = 'transparent', height = 60)
-        self.frame_playback.pack(fill = 'x', side = 'bottom', padx = 15, pady = 10)
+        self.frame_playback.pack(fill = 'x', side = 'bottom', padx = 15, pady = 20)
         self.frame_playback.pack_propagate(False)
 
-        self.btn_preview = ctk.CTkButton(self.frame_playback, text = 'Preescucha', state = 'disabled', command = self.iniciar_stream)
-        self.btn_preview.pack(side = 'left', fill = 'none', expand = True, padx = 20)
+        self.frame_transporte = ctk.CTkFrame(self.frame_playback, fg_color = 'transparent')
+        self.frame_transporte.pack(side = 'left', fill = 'y')
 
-        self.btn_parar = ctk.CTkButton(self.frame_playback, text = 'Detener reproducción', state = 'disabled', command = self.detener_stream, width = 60, fg_color = 'crimson', hover_color = 'darkred')
-        self.btn_parar.pack(side = 'left', fill = 'none', expand = True, padx = 20)
+        self.btn_preview = ctk.CTkButton(self.frame_transporte, text = 'Preescucha', font = ctk.CTkFont(size = 14), state = 'disabled', command = self.iniciar_stream, width = 110)
+        self.btn_preview.pack(side = 'left', padx = (5, 10), pady = 10)
+
+        self.btn_parar = ctk.CTkButton(self.frame_transporte, text = 'Detener', font = ctk.CTkFont(size = 14), state = 'disabled', command = self.detener_stream, width = 90, fg_color = 'crimson', hover_color = 'darkred')
+        self.btn_parar.pack(side = 'left', padx = 10, pady = 10)
+
+        self.switch_loop = ctk.CTkSwitch(self.frame_transporte, text = 'Loop de preescucha', font = ctk.CTkFont(size = 14), command = self.toggle_loop, progress_color = '#1f538d')
+        self.switch_loop.pack(side = 'left', padx = 15, pady = 10)
+
+        self.frame_exportar = ctk.CTkFrame(self.frame_playback, fg_color = 'transparent')
+        self.frame_exportar.pack(side = 'right', fill = 'y')
         
-        self.btn_guardar =ctk.CTkButton(self.frame_playback, text = 'Guardar audio procesado', state = 'disabled', command = self.guardar_audio)
-        self.btn_guardar.pack(side = 'left', fill = 'none', expand = True, padx = 20)
-
-        self.switch_loop = ctk.CTkSwitch(self.frame_playback, text = 'Loop de preescucha', command = self.toggle_loop, progress_color = '#1f538d')
-        self.switch_loop.pack(side = 'left', fill = 'none', expand = True, padx = 20)
+        self.btn_guardar = ctk.CTkButton(self.frame_exportar, text = 'Guardar audio procesado', font = ctk.CTkFont(size = 14), state = 'disabled', command = self.guardar_audio, width = 160)
+        self.btn_guardar.pack(side = 'right', padx = (10, 5), pady = 10)
 
     def actualizar_grafico(self, ir_modificada):
         tiempo_actual = time.time()
@@ -253,9 +261,9 @@ class ReverbAula(ctk.CTk):
             
             max_amp = np.max(np.abs(y)) if np.max(np.abs(y)) > 0 else 1.0
             self.ax.set_ylim(-max_amp * 1.1, max_amp * 1.1)
-            self.ax.set_xlim(0, downsample_x[-1])
+            self.ax.set_xlim(0, 3)
         
-        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 10, pad = 10)
+        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 12, pad = 10)
         self.ax.set_xlabel('Tiempo (s)', color = '#888888', fontsize = 9)
         self.ax.set_ylabel('Amplitud', color = '#888888', fontsize = 9)
 
