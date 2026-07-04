@@ -24,6 +24,10 @@ class ReverbAula(ctk.CTk):
         self.audio_process = None
         self.fs = 44100
         self.fs_ir = 44100
+        self.mix_actual = 0.4
+        self.target_mix = 0.4
+        self.suavizado = 0.8
+        self.hilo_decay = False
 
         self.carpeta_ir = Path(__file__).parent / 'IR'
         self.presets = {}
@@ -80,14 +84,12 @@ class ReverbAula(ctk.CTk):
         self.slider_decay = ctk.CTkSlider(self.frame_parametros, from_ = 0.1, to = 5.0, number_of_steps = 49, command = self.actualizar_lbl_decay)
         self.slider_decay.set(1.0)
         self.slider_decay.pack(fill = 'x', padx = 15, pady = (0, 10))
-        self.slider_decay.bind('<ButtonRelease-1>', self.disparar_procesamiento)
 
         self.lbl_mix = ctk.CTkLabel(self.frame_parametros, text = 'Mix: 40%')
         self.lbl_mix.pack(anchor = 'w', padx = 15, pady = (10, 0))
         self.slider_mix = ctk.CTkSlider(self.frame_parametros, from_ = 0.0, to = 1.0, number_of_steps = 29, command = self.actualizar_lbl_mix)
-        self.slider_mix.set(0.4)
+        self.slider_mix.set(self.mix_actual)
         self.slider_mix.pack(fill = 'x', padx = 15, pady = (0, 10))
-        self.slider_mix.bind('<ButtonRelease-1>', self.disparar_procesamiento)
 
         self.frame_playback = ctk.CTkFrame(self, fg_color = 'transparent')
         self.frame_playback.pack(pady = 5)
@@ -103,9 +105,18 @@ class ReverbAula(ctk.CTk):
 
     def actualizar_lbl_decay(self, val):
         self.lbl_decay.configure(text = f'Escalado de decay: {val:.2f}')
+        
+        if self.hilo_decay:
+            return
+        
+        self.hilo_decay = True
+        hilo = threading.Thread(target = self.procesar_audio, daemon = True)
+        hilo.start()
     
     def actualizar_lbl_mix(self, val):
         self.lbl_mix.configure(text = f'Mix: {int(val*100)}%')
+
+        self.target_mix = val
 
     def disparar_procesamiento(self, event = None):
         if not hasattr(self, 'audio_ir') or self.audio_ir is None:
@@ -280,18 +291,8 @@ class ReverbAula(ctk.CTk):
         if rms_wet > 0 and rms_dry > 0:
             audio_wet = audio_wet * (rms_dry / rms_wet) * 0.4
 
-        mix = self.slider_mix.get()
-
-        ganancia_dry = np.cos(mix * (np.pi / 2))
-        ganancia_wet = np.sin(mix * (np.pi / 2))
-
-        audio_final = (ganancia_dry * dry_padded) + (ganancia_wet * audio_wet)
-
-        val_max = np.max(np.abs(audio_final))
-        if val_max > 0:
-            audio_final /= val_max
-
-        self.audio_process = audio_final
+        self.audio_dry_padded = dry_padded
+        self.audio_process = audio_wet
 
         self.after(0, self.procesado_terminado)
     
@@ -300,6 +301,12 @@ class ReverbAula(ctk.CTk):
         self.btn_parar.configure(state = 'normal')
         self.btn_guardar.configure(state = 'normal')
 
+        self.hilo_decay = False
+
+        if hasattr(self, 'reproduciendo') and self.reproduciendo:
+            if self.frame_actual >= len(self.audio_process):
+                self.frame_actual = len(self.audio_process) - 1
+
     def iniciar_stream(self):
         if not hasattr(self, 'audio_process') or self.audio_process is None:
             print('No hay audio procesado para reproducir')
@@ -307,32 +314,46 @@ class ReverbAula(ctk.CTk):
         
         self.detener_stream()
 
-        frame_actual = 0
+        if not hasattr(self, 'frame_actual') or self.frame_actual >= len(self.audio_process):
+            self.frame_actual = 0
+
         self.reproduciendo = True
 
         canales = self.audio_process.shape[1] if self.audio_process.ndim > 1 else 1
         fs = getattr(self, 'fs', 48000)
 
         def callback(outdata, frames, time, status):
-            nonlocal frame_actual
-
             if status:
                 print(status)
 
-            chunk_size = min(len(self.audio_process) - frame_actual, frames) 
+            if self.frame_actual >= len(self.audio_process):
+                outdata[:frames] = 0
+                raise sd.CallbackStop()
+
+            chunk_size = min(len(self.audio_process) - self.frame_actual, frames) 
         
             if chunk_size > 0 and self.reproduciendo:
-                bloque = self.audio_process[frame_actual : frame_actual + chunk_size]
+                bloque_dry = self.audio_dry_padded[self.frame_actual : self.frame_actual + chunk_size]
+                bloque_wet = self.audio_process[self.frame_actual : self.frame_actual + chunk_size]
 
-                if canales == 1 and bloque.ndim == 1:
-                    outdata[:chunk_size, 0] = bloque
+                self.mix_actual += self.suavizado * (self.target_mix - self.mix_actual)
+
+                ganancia_dry = np.cos(self.mix_actual * (np.pi / 2))
+                ganancia_wet = np.sin(self.mix_actual * (np.pi / 2))
+
+                bloque_final = (ganancia_dry * bloque_dry) + (ganancia_wet * bloque_wet)
+
+                bloque_final = np.clip(bloque_final, -1.0, 1.0)
+
+                if canales == 1 and bloque_final.ndim == 1:
+                    outdata[:chunk_size, 0] = bloque_final
                 else:
-                    outdata[:chunk_size] = bloque
+                    outdata[:chunk_size] = bloque_final
 
                 if chunk_size < frames:
                     outdata[chunk_size:] = 0
 
-                frame_actual += chunk_size
+                self.frame_actual += chunk_size
             else:
                 outdata[:frames] = 0
                 raise sd.CallbackStop()
@@ -352,12 +373,15 @@ class ReverbAula(ctk.CTk):
         self.reproduciendo = False
         if hasattr(self, 'stream') and self.stream is not None:
             try:
-                self.stream.stop()
+                if self.stream.active:
+                    self.stream.stop()
                 self.stream.close()
-            except Exception:
-                pass
-
-            self.stream = None
+            except Exception as e:
+                print(e)
+            finally:
+                self.stream = None
+            
+            self.frame_actual = 0
     
     def guardar_audio(self):
         if self.audio_process is not None:
