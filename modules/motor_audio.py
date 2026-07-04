@@ -70,7 +70,7 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
     rms_wet = np.sqrt(np.mean(audio_wet**2))
     
     if rms_wet > 0 and rms_dry > 0:
-        audio_wet = audio_wet * (rms_dry / rms_wet) * 0.4
+        audio_wet = audio_wet * (rms_dry / rms_wet) * 1
 
     return dry_padded, audio_wet, ir_modificada
 

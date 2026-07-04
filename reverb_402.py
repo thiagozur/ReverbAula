@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import threading
 import numpy as np
@@ -16,10 +15,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 ctk.set_appearance_mode('Dark')
 ctk.set_default_color_theme('blue')
 
-class ReverbAula(ctk.CTk):
+class Reverb402(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title('Reverb en base IR del aula')
+        self.title('Reverb402')
 
         ancho = 1000
         alto = 880
@@ -173,7 +172,7 @@ class ReverbAula(ctk.CTk):
 
         self.contenedor_decay = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_decay.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_decay = ctk.CTkLabel(self.contenedor_decay, text = 'Decay\n1.0x', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_decay = ctk.CTkLabel(self.contenedor_decay, text = 'Decay\n1x', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_decay.pack(pady = (0, 2))
         self.knob_decay = CTkKnob(self.contenedor_decay, from_ = 0.1, to = 5.0, step = 0.1, size = 70, command = self.actualizar_decay)
         self.knob_decay.pack(pady = 5)
@@ -306,7 +305,7 @@ class ReverbAula(ctk.CTk):
         hilo.start()
 
     def actualizar_decay(self, val):
-        self.lbl_decay.configure(text = f'Decay\n{round(val, 1)}x')
+        self.lbl_decay.configure(text = f'Decay\n{round(val) if float(val).is_integer() else round(val, 1)}x')
         
         if self.hilo_decay:
             return
@@ -567,5 +566,5 @@ class ReverbAula(ctk.CTk):
                 sf.write(path_guardado, self.audio_process, self.fs)
 
 if __name__ == '__main__':
-    app = ReverbAula()
+    app = Reverb402()
     app.mainloop()
