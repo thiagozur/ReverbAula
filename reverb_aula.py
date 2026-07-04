@@ -80,23 +80,22 @@ class ReverbAula(ctk.CTk):
         self.slider_decay = ctk.CTkSlider(self.frame_parametros, from_ = 0.1, to = 5.0, number_of_steps = 49, command = self.actualizar_lbl_decay)
         self.slider_decay.set(1.0)
         self.slider_decay.pack(fill = 'x', padx = 15, pady = (0, 10))
+        self.slider_decay.bind('<ButtonRelease-1>', self.disparar_procesamiento)
 
         self.lbl_mix = ctk.CTkLabel(self.frame_parametros, text = 'Mix: 40%')
         self.lbl_mix.pack(anchor = 'w', padx = 15, pady = (10, 0))
         self.slider_mix = ctk.CTkSlider(self.frame_parametros, from_ = 0.0, to = 1.0, number_of_steps = 29, command = self.actualizar_lbl_mix)
         self.slider_mix.set(0.4)
         self.slider_mix.pack(fill = 'x', padx = 15, pady = (0, 10))
-
-        self.btn_procesar = ctk.CTkButton(self, text = 'Aplicar procesamiento', command = self.start_processing_thread, fg_color = 'green', hover_color = 'darkgreen')
-        self.btn_procesar.pack(pady = 10)
+        self.slider_mix.bind('<ButtonRelease-1>', self.disparar_procesamiento)
 
         self.frame_playback = ctk.CTkFrame(self, fg_color = 'transparent')
         self.frame_playback.pack(pady = 5)
 
-        self.btn_preview = ctk.CTkButton(self.frame_playback, text = 'Preescucha', state = 'disabled', command = self.escuchar_preview)
+        self.btn_preview = ctk.CTkButton(self.frame_playback, text = 'Preescucha', state = 'disabled', command = self.iniciar_stream)
         self.btn_preview.grid(row = 0, column = 0, padx = 5)
 
-        self.btn_parar = ctk.CTkButton(self.frame_playback, text = 'Detener reproducción', state = 'disabled', command = self.stop_audio, width = 60, fg_color = 'crimson', hover_color = 'darkred')
+        self.btn_parar = ctk.CTkButton(self.frame_playback, text = 'Detener reproducción', state = 'disabled', command = self.detener_stream, width = 60, fg_color = 'crimson', hover_color = 'darkred')
         self.btn_parar.grid(row = 0, column = 1, padx = 5)
         
         self.btn_guardar =ctk.CTkButton(self.frame_playback, text = 'Guardar audio procesado', state = 'disabled', command = self.guardar_audio)
@@ -108,7 +107,17 @@ class ReverbAula(ctk.CTk):
     def actualizar_lbl_mix(self, val):
         self.lbl_mix.configure(text = f'Mix: {int(val*100)}%')
 
+    def disparar_procesamiento(self, event = None):
+        if not hasattr(self, 'audio_ir') or self.audio_ir is None:
+            return
+        
+        if not hasattr(self, 'audio_dry') or self.audio_dry is None:
+            return
+        
+        threading.Thread(target = self.procesar_audio, daemon = True).start()
+
     def cargar_audio(self):
+        self.detener_stream()
         raw_filepath = filedialog.askopenfilename(filetypes = [('Archivos de audio', '*.wav *.flac *.mp3')])
         if raw_filepath:
             self.audio_path = Path(raw_filepath)
@@ -118,6 +127,8 @@ class ReverbAula(ctk.CTk):
                 self.audio_dry = np.hstack([self.audio_dry, self.audio_dry])
 
             self.lbl_estado_audio.configure(text=f'{self.audio_path.name} ({self.fs} Hz)')
+
+            self.disparar_procesamiento()
 
     def mostrar_menu_desplegable(self, event):
         if not self.presets:
@@ -169,8 +180,10 @@ class ReverbAula(ctk.CTk):
                 self.audio_ir = audio_ir_recortado[:corte]
             else:
                 self.audio_ir = audio_ir_recortado
+
+            self.disparar_procesamiento()
         except Exception as e:
-            print(f"Error al cargar la IR: {e}")
+            print(f'Error al cargar la IR: {e}')
 
     def preset_anterior(self):
         if not self.presets:
@@ -272,27 +285,79 @@ class ReverbAula(ctk.CTk):
         ganancia_dry = np.cos(mix * (np.pi / 2))
         ganancia_wet = np.sin(mix * (np.pi / 2))
 
-        self.audio_process = (ganancia_dry * dry_padded) + (ganancia_wet * audio_wet)
+        audio_final = (ganancia_dry * dry_padded) + (ganancia_wet * audio_wet)
 
-        val_max = np.max(np.abs(self.audio_process))
+        val_max = np.max(np.abs(audio_final))
         if val_max > 0:
-            self.audio_process /= val_max
+            audio_final /= val_max
+
+        self.audio_process = audio_final
 
         self.after(0, self.procesado_terminado)
     
     def procesado_terminado(self):
-        self.btn_procesar.configure(state = 'normal', text = 'Aplicar procesamiento')
         self.btn_preview.configure(state = 'normal')
         self.btn_parar.configure(state = 'normal')
         self.btn_guardar.configure(state = 'normal')
 
-    def escuchar_preview(self):
-        if self.audio_process is not None:
-            sd.stop()
-            sd.play(self.audio_process, self.fs)
+    def iniciar_stream(self):
+        if not hasattr(self, 'audio_process') or self.audio_process is None:
+            print('No hay audio procesado para reproducir')
+            return
+        
+        self.detener_stream()
 
-    def stop_audio(self):
-        sd.stop()
+        frame_actual = 0
+        self.reproduciendo = True
+
+        canales = self.audio_process.shape[1] if self.audio_process.ndim > 1 else 1
+        fs = getattr(self, 'fs', 48000)
+
+        def callback(outdata, frames, time, status):
+            nonlocal frame_actual
+
+            if status:
+                print(status)
+
+            chunk_size = min(len(self.audio_process) - frame_actual, frames) 
+        
+            if chunk_size > 0 and self.reproduciendo:
+                bloque = self.audio_process[frame_actual : frame_actual + chunk_size]
+
+                if canales == 1 and bloque.ndim == 1:
+                    outdata[:chunk_size, 0] = bloque
+                else:
+                    outdata[:chunk_size] = bloque
+
+                if chunk_size < frames:
+                    outdata[chunk_size:] = 0
+
+                frame_actual += chunk_size
+            else:
+                outdata[:frames] = 0
+                raise sd.CallbackStop()
+            
+        try:
+            self.stream = sd.OutputStream(
+                samplerate = fs,
+                channels = canales,
+                callback = callback,
+                blocksize = 1024
+            )
+            self.stream.start()
+        except Exception as e:
+            print(e)
+
+    def detener_stream(self):
+        self.reproduciendo = False
+        if hasattr(self, 'stream') and self.stream is not None:
+            try:
+                self.stream.stop()
+                self.stream.close()
+            except Exception:
+                pass
+
+            self.stream = None
     
     def guardar_audio(self):
         if self.audio_process is not None:
