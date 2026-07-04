@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 import threading
 import numpy as np
@@ -46,7 +47,12 @@ class Reverb402(ctk.CTk):
         self._ultimo_tiempo_grafico = 0.0
         self.ir_modificada = None
 
-        self.carpeta_ir = Path(__file__).parent / 'IR'
+        if hasattr(sys, 'frozen'):
+            ruta_base = Path(sys.executable).parent
+        else:
+            ruta_base = Path(__file__).parent
+
+        self.carpeta_ir = ruta_base / 'IR'
         self.carpeta_ir_stereo = self.carpeta_ir / 'stereo'
         self.presets = {}
         self.escanear_presets()

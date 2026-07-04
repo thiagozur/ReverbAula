@@ -2,3 +2,7 @@ Audios/
 Procesado de IR/
 outputs/
 **/__pycache__/
+reverb_402.spec
+build/
+dist/
+release/
