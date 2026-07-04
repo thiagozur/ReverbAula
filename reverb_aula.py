@@ -87,18 +87,28 @@ class ReverbAula(ctk.CTk):
 
         archivos_wav = sorted(self.carpeta_ir.glob('*.[wW][aA][vV]'))
 
-        wide_tuples = list(zip(archivos_wav[::2], archivos_wav[1::2]))
+        wide_tuples = []
+        for ruta_L in archivos_wav:
+            if ruta_L.stem.endswith('_izquierda'):
+                nombre_R = ruta_L.stem[:-10] + '_derecha' + ruta_L.suffix
+                ruta_R = ruta_L.parent / nombre_R
+
+                if ruta_R in archivos_wav:
+                    wide_tuples.append((ruta_L, ruta_R))
         dsp.preparar_ir(self, make_wides = wide_tuples)
 
         archivos_wide = sorted(self.carpeta_ir_stereo.glob('*.[wW][aA][vV]'))
 
+        count = 1
         for ruta in archivos_wav:
-            nombre = ruta.stem.replace('_', ' ').title()
+            nombre = str(count) + ' - ' + ruta.stem.replace('_', ' ').title()
             self.presets[nombre] = ruta
+            count +=1
         
         for ruta in archivos_wide:
-            nombre = ruta.stem.replace('_', ' ').title()
+            nombre = str(count) + ' - ' + ruta.stem.replace('_', ' ').title()
             self.presets[nombre] = ruta
+            count +=1
 
     def inicializar_ui(self):
         self.frame_preset = ctk.CTkFrame(self)
@@ -122,6 +132,36 @@ class ReverbAula(ctk.CTk):
         self.btn_cargar_audio.grid(row = 0, column = 0, padx = 10, pady = 10)
         self.lbl_estado_audio = ctk.CTkLabel(self.frame_archivo, text = 'No hay ningún archivo cargado')
         self.lbl_estado_audio.grid(row = 0, column = 1, padx = 10, pady = 10)
+
+        self.frame_visualizador = ctk.CTkFrame(self, width = 550, height = 350, fg_color = '#1a1a1a', corner_radius = 10)
+        self.frame_visualizador.pack_propagate(False)
+        self.frame_visualizador.pack(fill = 'both', expand = True, padx = 15, pady = 15)
+
+        sns.set_theme(style = 'darkgrid', rc = {
+            'axes.facecolor': '#1a1a1a',
+            'figure.facecolor': '#1a1a1a',
+            'grid.color': '#2d2d2d',
+            'axes.edgecolor': '#2d2d2d',
+            'text.color': '#ffffff',
+            'xtick.color': '#888888',
+            'ytick.color': '#888888'
+        })
+        self.fig, self.ax = plt.subplots(figsize = (5, 2.5), facecolor = '#1a1a1a')
+
+        self.ax.tick_params(colors = '#888888', labelsize = 9)
+        self.ax.grid(True, color = '#333333', linestyle = '--', linewidth = 0.5)
+        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 10, pad = 10)
+        self.ax.set_xlabel('Tiempo (s)', color = '#888888', fontsize = 9)
+        self.ax.set_ylabel('Amplitud', color = '#888888', fontsize = 9)
+
+        for spine in self.ax.spines.values():
+            spine.set_color('#333333')
+
+        self.canvas_grafico = FigureCanvasTkAgg(self.fig, master = self.frame_visualizador)
+        self.widget_grafico = self.canvas_grafico.get_tk_widget()
+        self.widget_grafico.pack(fill = 'both', expand = True, padx = 10, pady = 10)
+
+        self.fig.tight_layout()
 
         self.frame_parametros = ctk.CTkFrame(self)
         self.frame_parametros.pack(pady = 15, padx = 20, fill = 'x')
@@ -185,36 +225,6 @@ class ReverbAula(ctk.CTk):
         self.switch_loop = ctk.CTkSwitch(self.frame_playback, text = 'Loop de preescucha', command = self.toggle_loop, progress_color = '#1f538d')
         self.switch_loop.pack(side = 'left', fill = 'none', expand = True, padx = 20)
 
-        self.frame_visualizador = ctk.CTkFrame(self, width = 550, height = 350, fg_color = '#1a1a1a', corner_radius = 10)
-        self.frame_visualizador.pack_propagate(False)
-        self.frame_visualizador.pack(fill = 'both', expand = True, padx = 15, pady = 15)
-
-        sns.set_theme(style = 'darkgrid', rc = {
-            'axes.facecolor': '#1a1a1a',
-            'figure.facecolor': '#1a1a1a',
-            'grid.color': '#2d2d2d',
-            'axes.edgecolor': '#2d2d2d',
-            'text.color': '#ffffff',
-            'xtick.color': '#888888',
-            'ytick.color': '#888888'
-        })
-        self.fig, self.ax = plt.subplots(figsize = (5, 2.5), facecolor = '#1a1a1a')
-
-        self.ax.tick_params(colors = '#888888', labelsize = 9)
-        self.ax.grid(True, color = '#333333', linestyle = '--', linewidth = 0.5)
-        self.ax.set_title('Respuesta al impulso (modificada)', color = '#ffffff', fontsize = 10, pad = 10)
-        self.ax.set_xlabel('Tiempo (s)', color = '#888888', fontsize = 9)
-        self.ax.set_ylabel('Amplitud', color = '#888888', fontsize = 9)
-
-        for spine in self.ax.spines.values():
-            spine.set_color('#333333')
-
-        self.canvas_grafico = FigureCanvasTkAgg(self.fig, master = self.frame_visualizador)
-        self.widget_grafico = self.canvas_grafico.get_tk_widget()
-        self.widget_grafico.pack(fill = 'both', expand = True, padx = 10, pady = 10)
-
-        self.fig.tight_layout()
-
     def actualizar_grafico(self, ir_modificada):
         tiempo_actual = time.time()
         if tiempo_actual - self._ultimo_tiempo_grafico < 0.06:
@@ -238,8 +248,8 @@ class ReverbAula(ctk.CTk):
             downsample_y = y[::step]
             downsample_x = (np.arange(len(y)) / fs_ir)[::step]
 
-            self.ax.plot(downsample_x, downsample_y, color = '#1f538d', linewidth = 1, alpha = 0.9)
-            self.ax.fill_between(downsample_x, downsample_y, color = '#1f538d', alpha = 0.15)
+            self.ax.plot(downsample_x, downsample_y, color = '#007acc', linewidth = 0.2, alpha = 0.9)
+            self.ax.fill_between(downsample_x, downsample_y, color = '#007acc', alpha = 0.5)
             
             max_amp = np.max(np.abs(y)) if np.max(np.abs(y)) > 0 else 1.0
             self.ax.set_ylim(-max_amp * 1.1, max_amp * 1.1)

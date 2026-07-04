@@ -76,18 +76,16 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
 
 def preparar_ir(self, preset = None, make_wides = None):
         if make_wides is not None and len(make_wides) > 0:
-            preset_num = len(make_wides) * 2 + 1
             for par in make_wides:
                 ruta_ir_L, ruta_ir_R = par[0], par[1]
 
                 ruta_base = Path(ruta_ir_L)
                 destino = ruta_base.parent / 'stereo'
-                nombre = f'{preset_num}_-_{ruta_base.stem.split("_")[2]}_wide.wav'
+                nombre = f'{ruta_base.stem.split("_")[0]}_wide.wav'
                 ruta_salida = destino / nombre
 
                 if ruta_salida.exists():
                     print(f'Esta IR ya existe (omitiendo {nombre})')
-                    preset_num += 1
                     continue
 
                 try:
@@ -151,8 +149,6 @@ def preparar_ir(self, preset = None, make_wides = None):
                         ir_R_final = np.pad(ir_R_final, (0, max_len - len_ir_R), mode = 'constant')
 
                     ir = np.column_stack((ir_L_final, ir_R_final))
-
-                    preset_num += 1
 
                     sf.write(ruta_salida, ir, fs_ir_stereo, format = 'WAV', subtype = 'PCM_24')
 
