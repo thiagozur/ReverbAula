@@ -43,9 +43,9 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
     canales_wet = []
     n_canales = min(dry.shape[1], ir_modificada.shape[1])
     for c in range(n_canales):
-        canal_conv = fftconvolve(dry[:, c], ir_modificada[:, c], mode='full')
+        canal_conv = fftconvolve(dry[:, c], ir_modificada[:, c], mode = 'full')
         canales_wet.append(canal_conv)
-    audio_wet = np.stack(canales_wet, axis=-1)
+    audio_wet = np.stack(canales_wet, axis = -1)
 
     muestras_delay = int((ms_predelay * fs_audio) / 1000)
     if muestras_delay > 0:
@@ -54,12 +54,12 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
 
     nyquist = fs_audio / 2.0
     if freq_hpf > 20:
-        sos_hp = butter(2, freq_hpf / nyquist, btype='highpass', output='sos')
+        sos_hp = butter(2, freq_hpf / nyquist, btype = 'highpass', output = 'sos')
         for c in range(n_canales):
             audio_wet[:, c] = sosfilt(sos_hp, audio_wet[:, c])
 
     if freq_lpf < 20000:
-        sos_lp = butter(2, freq_lpf / nyquist, btype='lowpass', output='sos')
+        sos_lp = butter(2, freq_lpf / nyquist, btype = 'lowpass', output = 'sos')
         for c in range(n_canales):
             audio_wet[:, c] = sosfilt(sos_lp, audio_wet[:, c])
 
