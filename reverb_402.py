@@ -37,8 +37,8 @@ class Reverb402(ctk.CTk):
         self.audio_process = None
         self.fs = 48000
         self.fs_ir = 48000
-        self.mix_actual = 0.4
-        self.target_mix = 0.4
+        self.mix_actual = 0.5
+        self.target_mix = 0.5
         self.suavizado = 0.8
         self.hilo_decay = False
         self.playback_loop = False
@@ -207,6 +207,7 @@ class Reverb402(ctk.CTk):
         self.knob_decay = CTkKnob(self.contenedor_decay, from_ = 0.1, to = 5.0, step = 0.1, size = 70, command = self.actualizar_decay)
         self.knob_decay.pack(pady = 5)
         self.knob_decay.set(1.0)
+        self.knob_decay.bind('<Double-Button-1>', lambda event: self.reset_knob(self.knob_decay, 1.0, self.actualizar_decay))
 
         self.contenedor_predelay = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_predelay.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
@@ -215,6 +216,7 @@ class Reverb402(ctk.CTk):
         self.knob_predelay = CTkKnob(self.contenedor_predelay, from_ = 0, to = 150, step = 1, size = 70, command = self.actualizar_predelay)
         self.knob_predelay.pack(pady = 5)
         self.knob_predelay.set(0)
+        self.knob_predelay.bind('<Double-Button-1>', lambda event: self.reset_knob(self.knob_predelay, 0, self.actualizar_predelay))
 
         self.contenedor_hpf = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_hpf.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
@@ -223,6 +225,7 @@ class Reverb402(ctk.CTk):
         self.knob_hpf = CTkKnob(self.contenedor_hpf, from_ = 20, to = 500, step = 1, size = 70, command = self.actualizar_filtros)
         self.knob_hpf.pack(pady = 5)
         self.knob_hpf.set(20)
+        self.knob_hpf.bind('<Double-Button-1>', lambda event: self.reset_knob(self.knob_hpf, 20, self.actualizar_filtros))
 
         self.contenedor_lpf = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_lpf.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
@@ -231,14 +234,16 @@ class Reverb402(ctk.CTk):
         self.knob_lpf = CTkKnob(self.contenedor_lpf, from_ = 1000, to = 20000, step = 1, size = 70, command = self.actualizar_filtros)
         self.knob_lpf.pack(pady = 5)
         self.knob_lpf.set(20000)
+        self.knob_lpf.bind('<Double-Button-1>', lambda event: self.reset_knob(self.knob_lpf, 20000, self.actualizar_filtros))
 
         self.contenedor_mix = ctk.CTkFrame(self.frame_knobs, fg_color = 'transparent', width = 120)
         self.contenedor_mix.pack(side = 'left', fill = 'both', expand = True, padx = 10, pady = 10)
-        self.lbl_mix = ctk.CTkLabel(self.contenedor_mix, text = 'Mix\n40%', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
+        self.lbl_mix = ctk.CTkLabel(self.contenedor_mix, text = 'Mix\n50%', font = ctk.CTkFont(size = 12, weight = 'bold'), anchor = 'center', width = 120)
         self.lbl_mix.pack(pady = (0, 2))
         self.knob_mix = CTkKnob(self.contenedor_mix, from_ = 0.0, to = 1.0, step = 0.01, size = 70, command = self.actualizar_mix)
         self.knob_mix.pack(pady = 5)
-        self.knob_mix.set(0.4)
+        self.knob_mix.set(0.5)
+        self.knob_mix.bind('<Double-Button-1>', lambda event: self.reset_knob(self.knob_mix, 0.5, self.actualizar_mix))
 
         self.frame_playback = ctk.CTkFrame(self.frame_principal, fg_color = 'transparent')
         self.frame_playback.pack(fill = 'x', side = 'bottom', padx = 15, pady = 20)
@@ -306,6 +311,11 @@ class Reverb402(ctk.CTk):
             self.playback_loop = True
         else:
             self.playback_loop = False
+
+    def reset_knob(self, knob, valor, setter):
+        knob.set(valor)
+        setter(valor)
+
 
     def actualizar_filtros(self, val):
         freq_hpf = int(float(self.knob_hpf.get()))

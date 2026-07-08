@@ -52,6 +52,15 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
         silencio = np.zeros((muestras_delay, n_canales))
         audio_wet = np.vstack([silencio, audio_wet])
 
+    pad_len = len(audio_wet) - len(dry)
+    dry_padded = np.pad(dry, ((0, pad_len), (0, 0)), mode='constant')[:len(audio_wet), :n_canales]
+
+    rms_dry = np.sqrt(np.mean(dry_padded**2))
+    rms_wet = np.sqrt(np.mean(audio_wet**2))
+    
+    if rms_wet > 0 and rms_dry > 0:
+        audio_wet = audio_wet * (rms_dry / rms_wet) * 1
+
     nyquist = fs_audio / 2.0
     if freq_hpf > 20:
         sos_hp = butter(2, freq_hpf / nyquist, btype = 'highpass', output = 'sos')
@@ -62,15 +71,6 @@ def procesar_convolucion_completa(dry, ir, factor_decay, fs_ir, fs_audio, ms_pre
         sos_lp = butter(2, freq_lpf / nyquist, btype = 'lowpass', output = 'sos')
         for c in range(n_canales):
             audio_wet[:, c] = sosfilt(sos_lp, audio_wet[:, c])
-
-    pad_len = len(audio_wet) - len(dry)
-    dry_padded = np.pad(dry, ((0, pad_len), (0, 0)), mode='constant')[:len(audio_wet), :n_canales]
-
-    rms_dry = np.sqrt(np.mean(dry_padded**2))
-    rms_wet = np.sqrt(np.mean(audio_wet**2))
-    
-    if rms_wet > 0 and rms_dry > 0:
-        audio_wet = audio_wet * (rms_dry / rms_wet) * 1
 
     return dry_padded, audio_wet, ir_modificada
 
