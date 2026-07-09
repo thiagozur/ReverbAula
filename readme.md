@@ -23,5 +23,3 @@ La aplicación utiliza las librerías customtkinter, numpy, soundfile, sounddevi
 ```bash
 pip install customtkinter numpy soundfile sounddevice matplotlib seaborn
 ```
-
-Por: Joaquín García, Candelaria Grisafi, Juan Cruz Villarreal, Santiago Zumárraga, Thiago Zurschmitten.
