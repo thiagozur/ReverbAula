@@ -18,10 +18,10 @@ Este es un procesador de audio standalone desarrollado en Python para la simulac
 
 ## Dependencias necesarias
 
-La aplicación utiliza las librerías customtkinter, numpy, soundfile, sounddevice, matplotlib y seaborn. Para poder utilizarla deberán instalarse corriendo el siguiente comando por terminal:
+La aplicación utiliza las librerías customtkinter, numpy, scipy, soundfile, sounddevice, matplotlib y seaborn. Para poder utilizarla deberán instalarse corriendo el siguiente comando por terminal:
 
 ```bash
-pip install customtkinter numpy soundfile sounddevice matplotlib seaborn
+pip install customtkinter numpy scipy soundfile sounddevice matplotlib seaborn
 ```
 
 Por: Joaquín García, Candelaria Grisafi, Juan Cruz Villarreal, Santiago Zumárraga, Thiago Zurschmitten.
